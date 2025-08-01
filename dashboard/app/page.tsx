@@ -70,13 +70,22 @@ export default function Page() {
       const { value, done } = await reader.read();
       if (done) break;
       const chunk = decoder.decode(value, { stream: true });
-      received += chunk;
-      setProgress((p) => Math.min(p + 10, 95));
-      setStatus(chunk.trim());
+      const lines = chunk.split('\n').filter(Boolean);
+      for (const line of lines) {
+        try {
+          const data = JSON.parse(line);
+          if (data.type === 'status') {
+            setProgress(data.progress);
+            setStatus(data.message);
+          } else if (data.type === 'report') {
+            received += data.content;
+          }
+        } catch {
+          // ignore parse errors
+        }
+      }
     }
     setReport(received);
-    setProgress(100);
-    setStatus('Completed');
     setLoading(false);
     fetch('/api/reports')
       .then((r) => r.json())
