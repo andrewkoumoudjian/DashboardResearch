@@ -1,6 +1,31 @@
 export interface Env {
-  RESEARCH_API_URL: string;
+  OPENAI_API_KEY: string;
   REPORTS: KVNamespace;
+}
+
+async function generateReport(
+  symbol: string,
+  info: unknown,
+  env: Env
+): Promise<string> {
+  const prompt = `Provide an equity research summary for ${symbol}. Use the following JSON data as context: ${JSON.stringify(
+    info
+  )}`;
+
+  const aiResp = await fetch('https://api.openai.com/v1/chat/completions', {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      Authorization: `Bearer ${env.OPENAI_API_KEY}`
+    },
+    body: JSON.stringify({
+      model: 'gpt-4o-mini',
+      messages: [{ role: 'user', content: prompt }],
+      temperature: 0.7
+    })
+  });
+  const aiJson = await aiResp.json();
+  return aiJson.choices?.[0]?.message?.content?.trim() || 'No analysis available.';
 }
 
 export default {
@@ -12,25 +37,35 @@ export default {
       if (!symbol) {
         return new Response('symbol required', { status: 400 });
       }
-      const upstream = `${env.RESEARCH_API_URL}?symbol=${encodeURIComponent(symbol)}`;
-      const resp = await fetch(upstream);
+
       const id = `${symbol}-${Date.now()}`;
 
-      if (resp.body) {
-        const [body1, body2] = resp.body.tee();
-        (async () => {
-          const text = await new Response(body1).text();
+      const stream = new ReadableStream({
+        async start(controller) {
+          const send = (obj: unknown) =>
+            controller.enqueue(`${JSON.stringify(obj)}\n`);
+
+          send({ type: 'status', message: 'Fetching market data...', progress: 10 });
+          const quoteResp = await fetch(
+            `https://query1.finance.yahoo.com/v7/finance/quote?symbols=${encodeURIComponent(symbol)}`
+          );
+          const quoteJson = await quoteResp.json();
+          const info = quoteJson.quoteResponse?.result?.[0] || {};
+          send({ type: 'status', message: 'Generating analysis...', progress: 60 });
+          const report = await generateReport(symbol, info, env);
           await env.REPORTS.put(
             id,
-            JSON.stringify({ symbol, created: Date.now(), content: text })
+            JSON.stringify({ symbol, created: Date.now(), content: report })
           );
-        })();
-        const headers = new Headers(resp.headers);
-        headers.set('X-Report-Id', id);
-        return new Response(body2, { status: resp.status, headers });
-      }
+          send({ type: 'status', message: 'Completed', progress: 100 });
+          send({ type: 'report', content: report });
+          controller.close();
+        }
+      });
 
-      return resp;
+      return new Response(stream, {
+        headers: { 'Content-Type': 'application/json', 'X-Report-Id': id }
+      });
     }
 
     if (url.pathname === '/reports' && request.method === 'GET') {
