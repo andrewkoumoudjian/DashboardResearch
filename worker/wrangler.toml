@@ -1,0 +1,10 @@
+name = "research-worker"
+main = "src/index.ts"
+compatibility_date = "2024-05-01"
+
+[vars]
+RESEARCH_API_URL = "https://example.com/api"
+
+[[kv_namespaces]]
+binding = "REPORTS"
+id = "YOUR_KV_ID"

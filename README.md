@@ -47,6 +47,31 @@
 
 </div>
 
+## Cloudflare Research Dashboard
+
+This repository now also contains an experimental dashboard interface that runs on Cloudflare
+Pages/Workers. The dashboard exposes the existing research agents through a secure Worker API and
+renders a Radix UI powered Next.js front‑end where users can search U.S./Canadian equities and
+download generated reports.
+
+- Dynamic ticker search with auto‑complete.
+- Streaming progress bar that describes each step of the research.
+- Completed HTML reports can be downloaded as PDFs.
+- Reports are stored in a Cloudflare KV namespace and indexed for all users.
+
+- Front‑end code lives in [`dashboard`](dashboard) and is built with the Next.js App Router.
+- A minimal Worker that proxies requests to the Python research engine is located in
+  [`worker`](worker).
+
+To deploy on Cloudflare Pages:
+
+1. Create a KV namespace and bind it as `REPORTS` in [`worker/wrangler.toml`](worker/wrangler.toml).
+2. Deploy the worker with `npm --prefix worker run deploy` and note its public URL.
+3. In the Pages project settings, set `WORKER_URL` to that Worker URL and build the dashboard with `npm --prefix dashboard run build`.
+
+The trading manager from the original framework is intentionally omitted so the system focuses on
+research generation only.
+
 ## TradingAgents Framework
 
 TradingAgents is a multi-agent trading framework that mirrors the dynamics of real-world trading firms. By deploying specialized LLM-powered agents: from fundamental analysts, sentiment experts, and technical analysts, to trader, risk management team, the platform collaboratively evaluates market conditions and informs trading decisions. Moreover, these agents engage in dynamic discussions to pinpoint the optimal strategy.
