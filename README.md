@@ -50,9 +50,15 @@
 ## Cloudflare Research Dashboard
 
 This repository now also contains an experimental dashboard interface that runs entirely on
-Cloudflare Pages and Workers. The Worker performs the equity research using OpenAI and stores
-results in a KV namespace, while the Radix UI powered Next.js front‑end lets users search
-U.S./Canadian equities and download generated reports.
+Cloudflare Pages and Workers. Two example backends are provided:
+
+* `worker` – a minimal TypeScript Worker that calls OpenAI directly.
+* `worker_python` – a Python Worker that leverages the full `tradingagents`
+  package for end‑to‑end research generation.
+
+Both Workers store results in a KV namespace, while the Radix UI powered Next.js
+front‑end lets users search U.S./Canadian equities and download generated
+reports.
 
 - Dynamic ticker search with auto‑complete.
 - Streaming progress bar that describes each step of the research.
@@ -65,10 +71,16 @@ U.S./Canadian equities and download generated reports.
 
 To deploy on Cloudflare Pages:
 
-1. Create a KV namespace and bind it as `REPORTS` in [`worker/wrangler.toml`](worker/wrangler.toml).
-2. Set your OpenAI API key as `OPENAI_API_KEY` in the same file or via the Cloudflare dashboard.
-3. Deploy the worker with `npm --prefix worker run deploy` and note its public URL.
-4. In the Pages project settings, set `WORKER_URL` to that Worker URL and build the dashboard with `npm --prefix dashboard run build`.
+1. Create a KV namespace and bind it as `REPORTS` in either the
+   [TypeScript Worker](worker/wrangler.toml) or the
+   [Python Worker](worker_python/wrangler.toml).
+2. Set your OpenAI API key as `OPENAI_API_KEY` in the same file or via the
+   Cloudflare dashboard.
+3. Deploy your chosen worker. For the TypeScript worker run
+   `npm --prefix worker run deploy`; for the Python worker run
+   `npx wrangler --config worker_python/wrangler.toml deploy`.
+4. In the Pages project settings, set `WORKER_URL` to the deployed Worker URL
+   and build the dashboard with `npm --prefix dashboard run build`.
 
 The trading manager from the original framework is intentionally omitted so the system focuses on
 research generation only.
